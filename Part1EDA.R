@@ -2,6 +2,7 @@ library(ggplot2)
 library(dplyr)
 library(corrplot)
 
+# data = read.csv("/Users/jiuqinwei/Documents/GitHub/STAT675-Final-Project/Bank Customer Churn Prediction.csv")
 data <- read.csv("/Users/edmund1/Desktop/Bank\ Customer\ Churn\ Prediction\ copy.csv") #change the path
 str(data)
 summary(data)
