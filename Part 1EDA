@@ -11,10 +11,19 @@ active_member: Indicates whether the customer is an active member (1) or not (0)
 estimated_salary: Estimated salary of the customer (float64)
 churn: Whether the customer exited (1) or stayed (0) with the bank (int64)
 
-The mean age is approximately 39 years.
-The mean balance is about £76,486, but the standard deviation is large (£62,397), indicating significant variability.
+
+Customer Demographics and Account Details:
+The customer ages range from 18 to 92, indicating a wide range of customers by age. The mean age is approximately 39 years.
+The tenure with the bank ranges from 0 to 10 years, with an average of around 5 years.
+The balance ranges considerably from 0 to about £250,898, with an average balance of approximately £76,486, but the standard deviation is large (£62,397), indicating significant variability.
+Customers hold between 1 to 4 products with the bank, with most customers holding 1 product.
+A majority of customers, about 70.55%, have a credit card from the bank.
 Credit scores range from 350 to 850 with an average score of 650.
 Customers use between 1 to 4 bank products, most commonly 1 product.
-About 70.55% of customers have a credit card.
 Approximately 51.51% are active members.
 Churn rate (customers who exited the bank) is 20.37%.
+The estimated salary varies greatly among customers, indicating diverse economic backgrounds.
+Potential Focus Areas for the Bank:
+The bank may want to investigate why inactive members are leaving and develop strategies to engage these customers.
+It would be beneficial for the bank to examine the characteristics of the customers who churn, such as their credit score, balance, and number of products, to determine if there are specific factors influencing their decision to leave.
+Understanding the reasons behind the churn could help the bank to improve customer retention.
