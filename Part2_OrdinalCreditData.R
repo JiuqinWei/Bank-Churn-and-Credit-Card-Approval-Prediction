@@ -3,21 +3,44 @@ install.packages("dplyr")
 install.packages("tidyr")
 install.packages("MASS")
 install.packages("ggplot2")
+install.packages("xgboost")
+install.packages("corrplot")
+install.packages("cluster")
+install.packages("nnet")
+install.packages("caret")
+install.packages("fastDummies")
+install.packages("glmnet")
+install.packages("dummies")
+install.packages("pheatmap")
+install.packages("brant")
+install.packages("randomForest")
+install.packages("ranger")
 
 # Load necessary packages
 library(dplyr)
 library(tidyr)
 library(MASS)
 library(ggplot2)
+library(xgboost)
+library(corrplot)
+library(cluster)
+library(caret)
+library(fastDummies)
+library(glmnet)
+library(nnet)
+library(pheatmap)
+library(brant)
+library(randomForest)
+library(ranger)
 
 # Read two data frames
 data = read.csv("/Users/jiuqinwei/Documents/GitHub/STAT675-Final-Project/application_record.csv") # Applicants Demographic Data
 record = read.csv("/Users/jiuqinwei/Documents/GitHub/STAT675-Final-Project/credit_record.csv") # Applicants Accounts Data
 
-# Merge this data frame with the original data frame
+# Merging the data frames on 'ID'
 new_data <- merge(data, record, by = "ID", all.x = TRUE)
 
-# Renaming columns using dplyr
+# Renaming columns
 new_data <- new_data %>%
   rename(Gender = CODE_GENDER,
          Car = FLAG_OWN_CAR,
@@ -29,29 +52,44 @@ new_data <- new_data %>%
          houtp = NAME_HOUSING_TYPE,
          email = FLAG_EMAIL,
          inctp = NAME_INCOME_TYPE,
+         mobile = FLAG_MOBIL,
          wkphone = FLAG_WORK_PHONE,
          phone = FLAG_PHONE,
          famsize = CNT_FAM_MEMBERS,
          occyp = OCCUPATION_TYPE)
 
+# Feature Engineering
+new_data$Age <- -new_data$DAYS_BIRTH / 365.25
+new_data$Employment_Duration <- -new_data$DAYS_EMPLOYED / 365.25
+new_data$DAYS_BIRTH = NULL
+new_data$DAYS_EMPLOYED = NULL
+new_data$mobile = NULL # All the values are "1".
+
+# Identify duplicate values
+# sum(duplicated(new_data)) # There is no duplicate value.
+
+# Check for missing values in key columns
+colSums(is.na(new_data[, c("Gender", "inc", "occyp", "STATUS")]))
+
+# Filling missing 'occyp' based on the most frequent category per 'ID'
+# new_data <- new_data %>%
+#    group_by(ID) %>%
+#    mutate(occyp = if_else(is.na(occyp), first(occyp[!is.na(occyp)]), occyp)) %>%
+#    ungroup()
+
+# Impute or remove missing values
+new_data$occyp[new_data$occyp == ""] <- NA  # Convert empty strings to NA
+new_data <- na.omit(new_data)  # Remove rows with any NA values
+
 # Total missing values in the data frame
 total_missing_values <- sum(is.na(new_data))
-
-# Print total number of missing values
 print(total_missing_values)
 
-# Remove all rows with missing values
-new_data <- na.omit(new_data)
+# Count missing values in each column
+colSums(is.na(new_data))
 
-# Filter the data (drop all obs of STATUS with "X" and "C")
-new_data <- subset(new_data, !(STATUS %in% c("X", "C")))
-
-# Create a frequency table of STATUS
-status_freq <- table(new_data$STATUS)
-status_freq
-
-# Convert STATUS to a factor with ordered levels
-new_data$STATUS <- factor(new_data$STATUS, levels = c("0", "1", "2", "3", "4", "5"), ordered = TRUE)
+# Create frequency table
+print(table(new_data$STATUS))
 
 # Plot the frequency of STATUS
 barplot(table(new_data$STATUS), 
@@ -60,147 +98,174 @@ barplot(table(new_data$STATUS),
         ylab = "Frequency",
         col = "skyblue")
 
-# Identify duplicate values
-duplicated(new_data) 
-
-# Count of duplicated data
-sum(duplicated(new_data)) # There is no duplicate value.
-
 # Check the data
-glimpse(new_data)
+str(new_data)
 
-# Treat all the features
+# Data Encoding
+# Convert to binary features
+new_data$Gender <- ifelse(new_data$Gender == "M", 1, 0)
+new_data$Gender <- as.integer(new_data$Gender)
 
-## Binary Features
-### Gender
+new_data$Car <- ifelse(new_data$Car == "Y", 1, 0)
+new_data$Car <- as.integer(new_data$Car)
+
+new_data$Reality <- ifelse(new_data$Reality == "Y", 1, 0)
+new_data$Reality <- as.integer(new_data$Reality)
+
+str(new_data)
+
+# Frequency encoding
+library(dplyr)
+
+# inctp
 new_data <- new_data %>%
-  mutate(Gender = case_when(
-    Gender == "F" ~ "0",  # Replace 'F' with '0'
-    Gender == "M" ~ "1",  # Replace 'M' with '1'
-    TRUE ~ Gender         # Keep all other values unchanged (if any)
-  )) %>%
-  mutate(Gender = as.numeric(Gender))  # Convert Gender to numeric
+  group_by(inctp) %>%
+  mutate(inctp = n()) %>%
+  ungroup()
 
-### Car
+# edutp
 new_data <- new_data %>%
-  mutate(Car = case_when(
-    Car == "N" ~ "0",
-    Car == "Y" ~ "1",
-    TRUE ~ Car  # Handles cases where Car might not be N or Y
-  )) %>%
-  mutate(Car = as.numeric(Car))  # Convert Car to numeric
+  group_by(edutp) %>%
+  mutate(edutp = n()) %>%
+  ungroup()
 
-### House Reality
+# famtp
 new_data <- new_data %>%
-  mutate(Reality = case_when(
-    Reality == "N" ~ "0",
-    Reality == "Y" ~ "1",
-    TRUE ~ Reality  # Handles cases where Reality might not be N or Y
-  )) %>%
-  mutate(Reality = as.numeric(Reality))  # Convert Reality to numeric
+  group_by(famtp) %>%
+  mutate(famtp = n()) %>%
+  ungroup()
 
-## Continuous Features
-### Children number
-new_data$ChldNo[new_data$ChldNo >= 2] <- '2More'
-print(table(new_data$ChldNo))
-new_data = convert_dummy(new_data, 'ChldNo')
+# houtp
+new_data <- new_data %>%
+  group_by(houtp) %>%
+  mutate(houtp = n()) %>%
+  ungroup()
 
-### Annual Income
-# Convert 'inc' column to numeric
-new_data$inc <- as.numeric(new_data$inc)
+# houtp
+new_data <- new_data %>%
+  group_by(occyp) %>%
+  mutate(occyp = n()) %>%
+  ungroup()
 
-# Divide 'inc' values by 10,000
-new_data$inc <- new_data$inc / 10000
+# Check data structure
+str(new_data)
 
-# Calculate frequency counts of 'inc' values grouped into 10 bins
-inc_bins <- cut(new_data$inc, breaks = 10, labels = FALSE)
+# Write data to CSV file, use SAS for further analysis
+write.csv(new_data, file = "/Users/jiuqinwei/Desktop/part2.csv")
 
-# Categorize 'inc' column into three categories based on quantiles
-new_data$inc_category <- cut(new_data$inc, quantile(new_data$inc, 
-                                                    probs = c(0, 1/3, 2/3, 1), 
-                                                    na.rm = TRUE), 
-                             labels = c("low", "medium", "high"), 
-                             include.lowest = TRUE)
+# Multinomial Logistic Regression
 
-# Print the frequency counts of 'inc' values grouped into 10 bins
-print(table(inc_bins))
-
-# Print the frequency counts of 'inc_category' values
-print(table(new_data$inc_category))
-
-# Convert the income category to dummy variable
-new_data = convert_dummy(new_data,'inc_category')
-
-### Age
-# Step 1: Calculate Age
-new_data$Age <- -new_data$DAYS_BIRTH / 365
-
-# Step 2: Calculate frequency counts of Age values grouped into 10 bins and normalize
-age_bins <- cut(new_data$Age, breaks = 10, labels = FALSE)
-age_counts <- table(age_bins, useNA = "ifany")
-age_freq <- age_counts / sum(age_counts, na.rm = TRUE)
-
-# Print the normalized frequency counts of Age values
-print(age_freq)
-
-# Step 3: Plot histogram of Age values
-hist(new_data$Age, breaks = 20, main = "Histogram of Age", xlab = "Age", ylab = "Density", prob = TRUE)
-
-# Step 4: Categorize Age into five categories: "lowest", "low", "medium", "high", "highest"
-new_data$gp_Age <- cut(new_data$Age, 5, labels = c("lowest", "low", "medium", "high", "highest"))
-
-# Step 5: Convert the categorical variable 'gp_Age' into dummy variables
-new_data <- convert_dummy(new_data, 'gp_Age')
-
-### Days Employed
-# Step 1: Calculate worktm
-new_data$worktm <- -new_data$DAYS_EMPLOYED / 365
-
-# Step 2: Replace negative values with NA
-new_data$worktm[new_data$worktm < 0] <- NA
-
-# Step 3: Replace NA values with mean
-new_data$worktm[is.na(new_data$worktm)] <- mean(new_data$worktm, na.rm = TRUE)
-
-# Step 4: Plot histogram of worktm values
-hist(new_data$worktm, breaks = 20, main = "Histogram of worktm", xlab = "worktm", ylab = "Density", prob = TRUE)
-
-# Step 5: Categorize worktm into five categories: "lowest", "low", "medium", "high", "highest"
-new_data$gp_worktm <- cut(new_data$worktm, 5, labels = c("lowest", "low", "medium", "high", "highest"))
-
-# Step 6: Convert the categorical variable 'gp_worktm' into dummy variables
-new_data <- convert_dummy(new_data, 'gp_worktm')
-
-### Family Size
-# Step 1: Get frequency counts of 'famsize'
-table(new_data$famsize)
-
-# Step 2: Convert 'famsize' to integer
-new_data$famsize <- as.integer(new_data$famsize)
-
-# Step 3: Create a new column 'famsizegp' and convert it to object
-new_data$famsizegp <- new_data$famsize
-new_data$famsizegp <- as.character(new_data$famsizegp)
-
-# Step 4: Replace values in 'famsizegp' >= 3 with '3more'
-new_data$famsizegp[new_data$famsizegp >= 3] <- '3more'
-
-# Step 5: Convert 'famsizegp' into dummy variables
-new_data <- convert_dummy(new_data, 'famsizegp')
-
-## Categorical Features
-
-
-
-
-
+# Ensure 'STATUS' is converted properly to a factor
+new_data$STATUS <- factor(new_data$STATUS, levels = c("0", "1", "2", "3", "4", "5", "C", "X"))
 
 # Fit the model
-model <- polr(STATUS ~ .,
-              data = result_filtered, Hess = TRUE)
+model_mlr <- multinom(STATUS ~ ., data = new_data)
+model_mlr <- multinom(STATUS ~ MONTHS_BALANCE + Employment_Duration + Age + inc + occyp, data = new_data)
 
-# Get a summary of the model
-summary(model)
+# View model summary
+summary(model_mlr)
+
+# Predict STATUS
+# Predicting the class
+predicted_status <- nnet:::predict.multinom(model_mlr, new_data, type="class")
+
+# Convert predictions to a data frame for plotting
+predicted_data <- data.frame(Predicted_Status = predicted_status)
+
+# Create the bar plot
+ggplot(predicted_data, aes(x = Predicted_Status)) +
+  geom_bar(fill = "blue", alpha = 0.7) +
+  labs(title = "Distribution of Predicted STATUS", x = "STATUS Categories", y = "Count") +
+  theme_minimal()
+
+# Predicting the probabilities
+predicted_probabilities <- predict(model_mlr, new_data, type="probs")
+
+# Assuming 'predicted_probabilities' is a matrix or a data frame
+prob_data <- data.frame(predicted_probabilities)
+prob_data$ID = row.names(prob_data)  # Add an identifier for merging
+
+# Merge with the predicted status
+full_data <- cbind(prob_data, Predicted_Status = predicted_status)
+
+# Melt the data for ggplot
+library(reshape2)
+melted_data <- melt(full_data, id.vars = c("ID", "Predicted_Status"))
+
+# Plotting
+ggplot(melted_data, aes(x = value, fill = Predicted_Status)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~variable, scales = "free") +
+  labs(title = "Density of Predicted Probabilities for Each STATUS Category",
+       x = "Probability",
+       y = "Density") +
+  theme_minimal()
+
+# Ordinal Logistic Regression
+
+# Filter the data (drop all obs of STATUS with "X" and "C")
+new_data_ordinal <- subset(new_data, !(STATUS %in% c("X", "C")))
+
+# Convert STATUS to a factor with ordered levels
+new_data_ordinal$STATUS <- factor(new_data_ordinal$STATUS, levels = c("0", "1", "2", "3", "4", "5"), ordered = TRUE)
+
+# Load necessary library
+library(MASS)
+
+# Fit an ordinal logistic regression model
+model_olr <- polr(STATUS ~ ., data = new_data_ordinal, Hess = TRUE)
+
+# Summary of the model to view coefficients and statistics
+brant(model_olr) 
+
+# Not suitable for ordinal logistic regression
 
 # Write data to CSV file
-write.csv2(result_filtered, file = "/Users/jiuqinwei/Desktop/part2.csv")
+write.csv(new_data, file = "/Users/jiuqinwei/Desktop/part2.csv")
+
+### XGboost
+# Convert data to DMatrix object
+dtrain <- xgb.DMatrix(data = as.matrix(new_data[, -which(colnames(new_data) == "STATUS")]), label = as.numeric(new_data$STATUS) - 1)
+
+# Set parameters for an ordinal multi-class classification
+params <- list(
+  booster = "gbtree",
+  objective = "multi:softprob",
+  num_class = length(levels(new_data$STATUS)),
+  eta = 0.1,
+  gamma = 0.1,
+  max_depth = 6,
+  min_child_weight = 1,
+  subsample = 0.8,
+  colsample_bytree = 0.8
+)
+
+# Train the model
+xgb_model <- xgb.train(params, dtrain, nrounds = 100, watchlist = list(eval = dtrain, train = dtrain), print_every_n = 10)
+
+# Feature importance
+xgb.importance(feature_names = colnames(new_data[, -which(colnames(new_data) == "STATUS")]), model = xgb_model)
+xgb.plot.importance(importance_matrix = xgb.importance(feature_names = colnames(new_data[, -which(colnames(new_data) == "STATUS")]), model = xgb_model))
+
+### Random Forest
+new_data$STATUS <- as.factor(new_data$STATUS)
+set.seed(123)  # for reproducibility
+rf_model <- randomForest(STATUS ~ ., data = new_data, ntree = 100, mtry = sqrt(ncol(new_data)), importance = TRUE)
+print(rf_model)
+
+# Accessing importance matrix directly
+var_importance <- rf_model$importance
+
+# Checking the structure of the importance matrix
+print(var_importance)
+
+# Create a data frame for plotting
+importance_df <- data.frame(Variable = rownames(var_importance), Importance = var_importance[, "MeanDecreaseAccuracy"])
+
+# Plot using ggplot2
+ggplot(importance_df, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Makes it easier to read variable names
+  labs(title = "Variable Importance in Random Forest Model", x = "Variables", y = "Importance") +
+  theme_minimal()
+

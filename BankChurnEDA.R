@@ -1,6 +1,9 @@
 library(ggplot2)
 library(dplyr)
 library(corrplot)
+library(caret)
+library(glmnet)
+library(mgcv)
 
 # data = read.csv("/Users/jiuqinwei/Documents/GitHub/STAT675-Final-Project/Bank Customer Churn Prediction.csv")
 data <- read.csv("/Users/edmund1/Desktop/Bank\ Customer\ Churn\ Prediction\ copy.csv") #change the path
@@ -43,6 +46,42 @@ ggplot(data, aes(x = country, fill = as.factor(churn))) +
 ggplot(data, aes(x = as.factor(active_member), fill = as.factor(churn))) +
   geom_bar(position = "fill") + labs(y = "Proportion", title = "Churn by Active Membership")
 
-ggsave("age_distribution.png")
-ggsave("credit_score_distribution.png")
-ggsave("balance_distribution.png")
+# ggsave("age_distribution.png")
+# ggsave("credit_score_distribution.png")
+# ggsave("balance_distribution.png")
+
+### Logistic Regression
+# Create a training set and a test set
+set.seed(42)
+training_rows <- createDataPartition(data$churn, p = 0.8, list = FALSE)
+train_data <- data[training_rows, ]
+test_data <- data[-training_rows, ]
+
+# Logistic Regression Model
+model <- glm(churn ~ ., data = train_data, family = binomial)
+model_2 <- glm(churn ~ credit_score + country + gender + age + balance 
+               + products_number + active_member, data = train_data, family = binomial)
+
+# Summary of the model
+summary(model)
+summary(model_2)
+
+### Logistic Regression with Lasso Penalty using glmnet
+# Prepare matrix for glmnet
+x_matrix <- model.matrix(churn ~ credit_score + country + gender + age + balance 
+                         + products_number + active_member - 1, data = train_data)
+y_vector <- train_data$churn
+
+# Fit the model with Lasso penalty
+lasso_model <- cv.glmnet(x_matrix, y_vector, family = "binomial", alpha = 1)
+
+# Plot the coefficients
+plot(lasso_model)
+
+### GAM
+# Fit a GAM model
+gam_model <- gam(churn ~ s(age) + s(credit_score) + gender + country, family = binomial, data = train_data)
+
+# Summary of GAM model
+summary(gam_model)
+
