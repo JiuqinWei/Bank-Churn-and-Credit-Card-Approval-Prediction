@@ -18,7 +18,6 @@ cv.lasso <- cv.glmnet(x, y, family = "binomial", alpha = 1)
 plot(cv.lasso)
 best.lambda <- cv.lasso$lambda.min
 lasso.model <- glmnet(x, y, family = "binomial", alpha = 1, lambda = best.lambda)
-summary(lasso.model)
 
 library(mgcv)
 gam.model <- gam(churn ~ s(credit_score) + s(age) + s(balance) + country + gender + products_number + credit_card + active_member + estimated_salary, data = data, family = binomial())
