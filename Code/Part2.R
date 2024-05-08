@@ -44,7 +44,7 @@ new_data <- merge(data, record, by = "ID", all.x = TRUE)
 new_data <- new_data %>%
   rename(Gender = CODE_GENDER,
          Car = FLAG_OWN_CAR,
-         Reality = FLAG_OWN_REALTY,
+         Realty = FLAG_OWN_REALTY,
          ChldNo = CNT_CHILDREN,
          inc = AMT_INCOME_TOTAL,
          edutp = NAME_EDUCATION_TYPE,
@@ -109,8 +109,8 @@ new_data$Gender <- as.integer(new_data$Gender)
 new_data$Car <- ifelse(new_data$Car == "Y", 1, 0)
 new_data$Car <- as.integer(new_data$Car)
 
-new_data$Reality <- ifelse(new_data$Reality == "Y", 1, 0)
-new_data$Reality <- as.integer(new_data$Reality)
+new_data$Realty <- ifelse(new_data$Realty == "Y", 1, 0)
+new_data$Realty <- as.integer(new_data$Realty)
 
 str(new_data)
 
