@@ -3,7 +3,8 @@ library(dplyr)
 library(corrplot)
 library(ROSE) #For data balancing
 
-data <- read.csv("/Users/edmund1/Desktop/Bank\ Customer\ Churn\ Prediction\ copy.csv") #change the path
+data = read.csv("/Users/jiuqinwei/Documents/GitHub/Bank-Churn-and-Credit-Card-Approval-Prediction/Data/Bank Customer Churn Prediction.csv")
+# data <- read.csv("/Users/edmund1/Desktop/Bank\ Customer\ Churn\ Prediction\ copy.csv") #change the path
 str(data)
 summary(data)
 

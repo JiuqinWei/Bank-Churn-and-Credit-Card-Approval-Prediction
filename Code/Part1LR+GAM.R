@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 library(caret)
 library(glmnet)
 library(mgcv)
@@ -5,6 +6,10 @@ library(car)
 library(pROC)
 
 data <- read.csv("/Users/edmund1/Desktop/Bank\ Customer\ Churn\ Prediction\ copy.csv") #change the path
+=======
+data = read.csv("/Users/jiuqinwei/Documents/GitHub/Bank-Churn-and-Credit-Card-Approval-Prediction/Data/Bank Customer Churn Prediction.csv")
+#data <- read.csv("/Users/edmund1/Desktop/Bank\ Customer\ Churn\ Prediction\ copy.csv") #change the path
+>>>>>>> Stashed changes
 str(data)
 summary(data)
 dim(data)
@@ -56,6 +61,7 @@ pdf("GAM_Smooth_Plots.pdf")
 plot(gam.model, pages = 1)  # Plotting smooth terms
 dev.off()
 
+<<<<<<< Updated upstream
 # Prediction and Model Evaluation
 predictions <- predict(fit, newdata = testingData, type = "response")
 predicted_classes <- ifelse(predictions > 0.5, 1, 0)
@@ -78,3 +84,10 @@ plot(roc_obj, main = "ROC Curve for Logistic Regression Model")
 abline(a = 0, b = 1, col = "red", lty = 2)  # Adding reference line
 auc_value <- auc(roc_obj)
 print(paste("AUC: ", auc_value))
+=======
+library(ROCR)
+predictions <- predict(fit, type = "response")
+pred <- prediction(predictions, data$churn)
+perf <- performance(pred, measure = "tpr", x.measure = "fpr")
+plot(perf, main = "ROC Curve", colorize = TRUE)
+>>>>>>> Stashed changes
